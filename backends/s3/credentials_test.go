@@ -44,7 +44,7 @@ func TestFileSecretsCredentials(t *testing.T) {
 		}
 	}()
 
-	endpoint, err := container.S3Endpoint(ctx)
+	endpoint, err := container.PortEndpoint(ctx, s3testcontainer.APIPort, "")
 	if err != nil {
 		t.Fatal(err)
 	}

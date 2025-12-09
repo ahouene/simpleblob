@@ -27,8 +27,8 @@ const (
 	// region is the default region for Garage config.
 	region = "garage"
 
-	// apiPort is the port used for the S3 API.
-	apiPort = "3900"
+	// APIPort is the port used for the S3 API.
+	APIPort = "3900"
 
 	// configTOML contains as little parameters as possible for the server to run.
 	configTOML = `
@@ -40,7 +40,7 @@ rpc_secret = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 [s3_api]
 s3_region = "` + region + `"
-api_bind_addr = "[::]:` + apiPort + `"
+api_bind_addr = "[::]:` + APIPort + `"
 `
 )
 
@@ -60,7 +60,7 @@ func Run(ctx context.Context, opts ...testcontainers.ContainerCustomizer) (conta
 func RunContainer(ctx context.Context, image string, opts ...testcontainers.ContainerCustomizer) (c *GarageContainer, err error) {
 	c = new(GarageContainer)
 	allOpts := []testcontainers.ContainerCustomizer{
-		testcontainers.WithExposedPorts("3900"),
+		testcontainers.WithExposedPorts(APIPort),
 		testcontainers.WithFiles(testcontainers.ContainerFile{
 			Reader:            strings.NewReader(configTOML),
 			ContainerFilePath: "/etc/garage.toml",
@@ -130,7 +130,7 @@ func (c *GarageContainer) ExecGarage(ctx context.Context, cmdArgs ...string) (st
 // S3Endpoint returns the string to use as the S3 endpoint
 // (what would be the AWS_ENDPOINT_URL environment variable).
 func (c *GarageContainer) S3Endpoint(ctx context.Context) (string, error) {
-	return c.PortEndpoint(ctx, "3900", "http")
+	return c.PortEndpoint(ctx, APIPort, "http")
 }
 
 // Region returns the S3 region for the container
