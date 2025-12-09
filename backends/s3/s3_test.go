@@ -11,29 +11,30 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	testcontainersminio "github.com/testcontainers/testcontainers-go/modules/minio"
 
+	"github.com/PowerDNS/simpleblob/backends/s3/s3testcontainer"
 	"github.com/PowerDNS/simpleblob/tester"
 )
 
 func getBackend(ctx context.Context, t *testing.T) (b *Backend) {
 	testcontainers.SkipIfProviderIsNotHealthy(t)
-	container, err := testcontainersminio.Run(ctx, "quay.io/minio/minio")
+	container, err := s3testcontainer.Run(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	url, err := container.ConnectionString(ctx)
+	endpoint, err := container.S3Endpoint(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	b, err = New(ctx, Options{
-		EndpointURL:  "http://" + url,
-		AccessKey:    container.Username,
-		SecretKey:    container.Password,
+		EndpointURL:  endpoint,
+		AccessKey:    container.AccessKey(),
+		SecretKey:    container.SecretKey(),
 		Bucket:       "test-bucket",
 		CreateBucket: true,
+		Region:       container.Region(),
 	})
 	require.NoError(t, err)
 

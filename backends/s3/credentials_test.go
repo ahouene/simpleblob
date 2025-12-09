@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,8 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/testcontainers/testcontainers-go"
-	testcontainersminio "github.com/testcontainers/testcontainers-go/modules/minio"
+
+	"github.com/PowerDNS/simpleblob/backends/s3/s3testcontainer"
 )
 
 func TestFileSecretsCredentials(t *testing.T) {
@@ -32,7 +34,7 @@ func TestFileSecretsCredentials(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	container, err := testcontainersminio.Run(ctx, "quay.io/minio/minio")
+	container, err := s3testcontainer.Run(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,16 +44,16 @@ func TestFileSecretsCredentials(t *testing.T) {
 		}
 	}()
 
-	addr, err := container.ConnectionString(ctx)
+	endpoint, err := container.S3Endpoint(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create minio client, using our provider.
 	creds := credentials.New(provider)
-	clt, err := minio.New(addr, &minio.Options{
+	clt, err := minio.New(endpoint, &minio.Options{
 		Creds:  creds,
-		Region: "us-east-1",
+		Region: container.Region(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +83,7 @@ func TestFileSecretsCredentials(t *testing.T) {
 	// Write the right keys to the files.
 	// We're not testing expiry here,
 	// and forcing credentials cache to update.
-	writeSecrets(t, tempDir, container.Username, container.Password)
+	writeSecrets(t, tempDir, container.AccessKey(), container.SecretKey())
 	creds.Expire()
 	assertClientSuccess(true, "after changing files content")
 
@@ -97,19 +99,19 @@ func TestBackendWithSecrets(t *testing.T) {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 
-	container, err := testcontainersminio.Run(ctx, "quay.io/minio/minio")
+	container, err := s3testcontainer.Run(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		if err := container.Terminate(ctx); err != nil {
+	t.Cleanup(func() {
+		if err := container.Terminate(context.Background()); err != nil {
 			t.Log(err)
 		}
-	}()
+	})
 
-	addr, err := container.ConnectionString(ctx)
+	endpoint, err := container.S3Endpoint(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,10 +122,10 @@ func TestBackendWithSecrets(t *testing.T) {
 	opt := s3.Options{
 		AccessKeyFile: access,
 		SecretKeyFile: secret,
-		Region:        "us-east-1",
+		Region:        container.Region(),
 		Bucket:        "test-bucket",
 		CreateBucket:  true,
-		EndpointURL:   "http://" + addr,
+		EndpointURL:   endpoint,
 	}
 
 	// Backend should not start if secrets files do not exist.
@@ -135,13 +137,15 @@ func TestBackendWithSecrets(t *testing.T) {
 	// Now write files, but with bad content.
 	writeSecrets(t, tempDir, "", "")
 	_, err = s3.New(ctx, opt)
-	if err == nil || err.Error() != "Access Denied." {
-		t.Fatal("backend should not start with bad credentials")
+	if err == nil {
+		t.Fatal("backend should not be available without credentials")
+	} else if !strings.Contains(err.Error(), "Forbidden") {
+		t.Fatalf("unexpected error connecting without credentials: %s", err)
 	}
 
 	// Write the good content.
 	// Now the backend should start and be able to perform a request.
-	writeSecrets(t, tempDir, container.Username, container.Password)
+	writeSecrets(t, tempDir, container.AccessKey(), container.SecretKey())
 
 	backend, err := s3.New(ctx, opt)
 	if err != nil {
