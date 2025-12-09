@@ -35,14 +35,14 @@ func TestFileSecretsCredentials(t *testing.T) {
 	defer cancel()
 
 	container, err := s3testcontainer.Run(ctx)
+	t.Cleanup(func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			t.Log(err)
+		}
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		if err := container.Terminate(ctx); err != nil {
-			t.Log(err)
-		}
-	}()
 
 	endpoint, err := container.PortEndpoint(ctx, s3testcontainer.APIPort, "")
 	if err != nil {
@@ -102,14 +102,14 @@ func TestBackendWithSecrets(t *testing.T) {
 	t.Cleanup(cancel)
 
 	container, err := s3testcontainer.Run(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Cleanup(func() {
-		if err := container.Terminate(context.Background()); err != nil {
+		if err := testcontainers.TerminateContainer(container); err != nil {
 			t.Log(err)
 		}
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	endpoint, err := container.S3Endpoint(ctx)
 	if err != nil {

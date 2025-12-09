@@ -19,6 +19,11 @@ import (
 func getBackend(ctx context.Context, t *testing.T) (b *Backend) {
 	testcontainers.SkipIfProviderIsNotHealthy(t)
 	container, err := s3testcontainer.Run(ctx)
+	t.Cleanup(func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			t.Log(err)
+		}
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,9 +63,6 @@ func getBackend(ctx context.Context, t *testing.T) (b *Backend) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		cleanStorage(ctx)
-		if err := container.Terminate(ctx); err != nil {
-			t.Log(err)
-		}
 	})
 	cleanStorage(ctx)
 
