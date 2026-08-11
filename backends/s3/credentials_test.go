@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/PowerDNS/simpleblob/backends/s3"
 	"github.com/minio/minio-go/v7"
@@ -21,17 +20,14 @@ func TestCredentialsFilesUpdate(t *testing.T) {
 	container, addr := setupMinioServer(t)
 	tempDir := t.TempDir()
 
-	access, secret, _ := secretsPaths(tempDir)
+	access, secret, token := secretsPaths(tempDir)
 
 	// Instantiate provider (what we're testing).
 	provider := &s3.FileSecretsCredentials{
-		AccessKeyFile: access,
-		SecretKeyFile: secret,
+		AccessKeyFile:    access,
+		SecretKeyFile:    secret,
+		SessionTokenFile: token,
 	}
-
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
 	// Create minio client, using our provider.
 	creds := credentials.New(provider)
@@ -41,7 +37,7 @@ func TestCredentialsFilesUpdate(t *testing.T) {
 	}
 
 	assertClientSuccess := func(want bool, when string) {
-		_, err = clt.BucketExists(ctx, "doesnotmatter")
+		_, err = clt.BucketExists(t.Context(), "doesnotmatter")
 		s := "fail"
 		if want {
 			s = "succeed"
@@ -77,7 +73,7 @@ func TestCredentialsFilesUpdate(t *testing.T) {
 	sts := setupSTS(t, addr, container.Username, container.Password)
 	writeSecrets(t, tempDir, sts.AccessKeyID, sts.SecretAccessKey, sts.SessionToken)
 	creds.Expire()
-	assertClientSuccess(false, "after switching to session token")
+	assertClientSuccess(true, "after switching to session token")
 
 	// Back without session token.
 	writeSecrets(t, tempDir, container.Username, container.Password, "")
