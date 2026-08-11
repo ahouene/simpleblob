@@ -57,7 +57,7 @@ type Options struct {
 	// SessionToken is optional.
 	AccessKey    string `yaml:"access_key"`
 	SecretKey    string `yaml:"secret_key"`
-	SessionToken string `yaml:"access_token"`
+	SessionToken string `yaml:"session_token"`
 
 	// Path to the file containing the access key
 	// as an alternative to AccessKey, SecretKey and SessionToken,
@@ -69,11 +69,11 @@ type Options struct {
 	// e.g. /etc/s3-secrets/secret-key.
 	SecretKeyFile string `yaml:"secret_key_file"`
 
-	// Path to the file containing the access token
+	// Path to the file containing the session token
 	// as an alternative to AccessKey, SecretKey and SessionToken,
-	// e.g. /etc/s3-secrets/access-token.
+	// e.g. /etc/s3-secrets/session-token.
 	// Even if using this authentication method, the value is optional.
-	SessionTokenFile string `yaml:"access_token_file"`
+	SessionTokenFile string `yaml:"session_token_file"`
 
 	// Time between each secrets retrieval.
 	// Minimum is 1s, lower values are considered an error.
