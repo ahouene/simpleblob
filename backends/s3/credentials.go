@@ -58,8 +58,6 @@ func (c *FileSecretsCredentials) RetrieveWithCredContext(*credentials.CredContex
 		if err != nil {
 			return credentials.Value{}, err
 		}
-	} else if err := os.RemoveAll(c.SessionTokenFile); err != nil {
-		return credentials.Value{}, err // Absence of file will not return an error
 	}
 
 	creds := credentials.Value{
