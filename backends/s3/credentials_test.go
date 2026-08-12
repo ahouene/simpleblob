@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PowerDNS/simpleblob/backends/s3"
 	"github.com/minio/minio-go/v7"
@@ -204,9 +205,15 @@ func setupSTS(t *testing.T, addr, username, password string) credentials.Value {
 	if err != nil {
 		t.Fatal(err)
 	}
-	creds, err := stsAssumeRole.GetWithContext(nil)
-	if err != nil {
-		t.Fatal(err)
+	for {
+		creds, err := stsAssumeRole.GetWithContext(nil)
+		if err != nil {
+			if strings.HasPrefix(err.Error(), "Server not initialized") {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			t.Fatal(err)
+		}
+		return creds
 	}
-	return creds
 }
